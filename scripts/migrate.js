@@ -1,3 +1,4 @@
+require('dotenv').config();
 const { sequelize, Sector, Entity, Contact, Platform, Meeting, Reminder } = require('../src/models');
 
 async function migrate() {
