@@ -142,7 +142,7 @@ function generateTalkingPoints(data: MeetingBriefData): string[] {
 
   // Add platform-related talking points
   if (data.platforms.length > 0) {
-    const urgentPlatforms = data.platforms.filter(p => {
+    const urgentPlatforms = data.platforms.filter((p: any) => {
       const daysUntilDeadline = p.deadline
         ? Math.ceil((new Date(p.deadline).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
         : 999;
@@ -150,12 +150,12 @@ function generateTalkingPoints(data: MeetingBriefData): string[] {
     });
 
     if (urgentPlatforms.length > 0) {
-      points.push(`Discuss urgent platform deadlines: ${urgentPlatforms.map(p => p.name).join(', ')}`);
+      points.push(`Discuss urgent platform deadlines: ${urgentPlatforms.map((p: any) => p.name).join(', ')}`);
     }
 
-    const blockedPlatforms = data.platforms.filter(p => p.status === 'blocked');
+    const blockedPlatforms = data.platforms.filter((p: any) => p.status === 'blocked');
     if (blockedPlatforms.length > 0) {
-      points.push(`Address blockers for: ${blockedPlatforms.map(p => p.name).join(', ')}`);
+      points.push(`Address blockers for: ${blockedPlatforms.map((p: any) => p.name).join(', ')}`);
     }
   }
 

@@ -55,7 +55,7 @@ export async function GET(
       entity: meeting.entity.toJSON(),
       sector: meeting.entity.sector.toJSON(),
       contact: meeting.contact.toJSON(),
-      platforms: platforms.map(p => p.toJSON()),
+      platforms: platforms.map((p: any) => p.toJSON()),
       lastMeeting: lastMeeting ? lastMeeting.toJSON() : null
     });
 
