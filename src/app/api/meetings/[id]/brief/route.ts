@@ -59,8 +59,10 @@ export async function GET(
       lastMeeting: lastMeeting ? lastMeeting.toJSON() : null
     });
 
-    // Convert Buffer to Response-compatible format
-    return new Response(pdfBuffer, {
+    // Convert Buffer to Uint8Array for Response compatibility
+    const uint8Array = new Uint8Array(pdfBuffer);
+
+    return new Response(uint8Array, {
       status: 200,
       headers: {
         'Content-Type': 'application/pdf',
