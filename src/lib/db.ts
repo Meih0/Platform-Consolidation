@@ -1,18 +1,59 @@
-const models = require('../models');
+// Lazy load models to prevent build-time execution
+let modelsCache: any = null;
 
-export const {
-  sequelize,
-  Sector,
-  Entity,
-  Contact,
-  Platform,
-  Meeting,
-  Reminder
-}: any = models;
+function getModels() {
+  if (!modelsCache) {
+    modelsCache = require('../models');
+  }
+  return modelsCache;
+}
+
+export const sequelize = new Proxy({} as any, {
+  get(target, prop) {
+    return getModels().sequelize[prop];
+  }
+});
+
+export const Sector = new Proxy({} as any, {
+  get(target, prop) {
+    return getModels().Sector[prop];
+  }
+});
+
+export const Entity = new Proxy({} as any, {
+  get(target, prop) {
+    return getModels().Entity[prop];
+  }
+});
+
+export const Contact = new Proxy({} as any, {
+  get(target, prop) {
+    return getModels().Contact[prop];
+  }
+});
+
+export const Platform = new Proxy({} as any, {
+  get(target, prop) {
+    return getModels().Platform[prop];
+  }
+});
+
+export const Meeting = new Proxy({} as any, {
+  get(target, prop) {
+    return getModels().Meeting[prop];
+  }
+});
+
+export const Reminder = new Proxy({} as any, {
+  get(target, prop) {
+    return getModels().Reminder[prop];
+  }
+});
 
 export async function initDB() {
   try {
-    await sequelize.authenticate();
+    const models = getModels();
+    await models.sequelize.authenticate();
     console.log('Database connection established.');
     return true;
   } catch (error) {
