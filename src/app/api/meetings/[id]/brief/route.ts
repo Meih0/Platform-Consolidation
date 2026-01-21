@@ -3,6 +3,8 @@ import { Meeting, Entity, Contact, Sector, Platform } from '@/lib/db';
 import { generateMeetingBrief } from '@/utils/pdfGenerator';
 import { Op } from 'sequelize';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }

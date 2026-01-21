@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Contact } from '@/lib/db';
 
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }

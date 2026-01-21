@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Entity, Sector, Contact, Platform } from '@/lib/db';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
     const entities = await Entity.findAll({
