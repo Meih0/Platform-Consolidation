@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import Navigation from '@/components/Navigation';
 import Link from 'next/link';
 import { format, formatDistanceToNow } from 'date-fns';
@@ -10,11 +10,7 @@ export default function MeetingsPage() {
   const [filter, setFilter] = useState<'all' | 'upcoming' | 'completed'>('upcoming');
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    loadMeetings();
-  }, [filter]);
-
-  async function loadMeetings() {
+  const loadMeetings = useCallback(async () => {
     setLoading(true);
     try {
       let url = '/api/meetings';
@@ -32,7 +28,11 @@ export default function MeetingsPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [filter]);
+
+  useEffect(() => {
+    loadMeetings();
+  }, [loadMeetings]);
 
   return (
     <div className="min-h-screen bg-gray-50">

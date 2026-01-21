@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Navigation from '@/components/Navigation';
 import { format } from 'date-fns';
@@ -19,13 +19,7 @@ export default function MeetingPrep() {
     nextSteps: '',
   });
 
-  useEffect(() => {
-    if (params.id) {
-      loadMeetingData();
-    }
-  }, [params.id]);
-
-  async function loadMeetingData() {
+  const loadMeetingData = useCallback(async () => {
     try {
       const meetingRes = await fetch(`/api/meetings/${params.id}`);
       const meetingData = await meetingRes.json();
@@ -65,7 +59,13 @@ export default function MeetingPrep() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [params.id]);
+
+  useEffect(() => {
+    if (params.id) {
+      loadMeetingData();
+    }
+  }, [params.id, loadMeetingData]);
 
   async function handleDownloadBrief() {
     try {
