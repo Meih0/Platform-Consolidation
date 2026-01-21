@@ -1,3 +1,4 @@
+// eslint-disable-next-line @typescript-eslint/no-var-requires
 const models = require('../models');
 
 export const {
@@ -8,7 +9,7 @@ export const {
   Platform,
   Meeting,
   Reminder
-} = models;
+}: any = models;
 
 export async function initDB() {
   try {

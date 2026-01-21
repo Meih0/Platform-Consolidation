@@ -59,7 +59,8 @@ export async function GET(
       lastMeeting: lastMeeting ? lastMeeting.toJSON() : null
     });
 
-    return new NextResponse(pdfBuffer, {
+    // Convert Buffer to Response-compatible format
+    return new Response(pdfBuffer, {
       status: 200,
       headers: {
         'Content-Type': 'application/pdf',
