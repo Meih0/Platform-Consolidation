@@ -3,19 +3,43 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(req: NextRequest) {
   const db = getDb();
-  const entityId = new URL(req.url).searchParams.get('entity_id');
-  let query = 'SELECT p.*, e.name AS entity_name FROM platforms p JOIN entities e ON p.entity_id = e.id';
+  const orgId = req.nextUrl.searchParams.get('org_id');
+  const sectorLeadId = req.nextUrl.searchParams.get('sector_lead_id');
+
+  let query = `
+    SELECT p.*, o.name_en as org_name, s.name_en as sector_name
+    FROM platforms p
+    LEFT JOIN organizations o ON p.org_id = o.id
+    LEFT JOIN sectors s ON o.sector_id = s.id
+  `;
+  const conditions: string[] = [];
   const params: any[] = [];
-  if (entityId) { query += ' WHERE p.entity_id = ?'; params.push(entityId); }
-  query += ' ORDER BY p.deadline ASC';
-  const rows = db.prepare(query).all(...params);
-  return NextResponse.json(rows);
+
+  if (orgId) {
+    conditions.push('p.org_id = ?');
+    params.push(orgId);
+  }
+  if (sectorLeadId) {
+    conditions.push('s.sector_lead_id = ?');
+    params.push(sectorLeadId);
+  }
+  if (conditions.length > 0) {
+    query += ' WHERE ' + conditions.join(' AND ');
+  }
+  query += ' ORDER BY p.id';
+
+  const platforms = db.prepare(query).all(...params);
+  return NextResponse.json(platforms);
 }
 
 export async function POST(req: NextRequest) {
   const db = getDb();
-  const { entity_id, name, status, action, deadline, progress, target_platform, notes } = await req.json();
-  const result = db.prepare('INSERT INTO platforms (entity_id, name, status, action, deadline, progress, target_platform, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?)').run(entity_id, name, status ?? 'active', action ?? 'consolidate', deadline ?? null, progress ?? 0, target_platform ?? null, notes ?? null);
-  const row = db.prepare('SELECT p.*, e.name AS entity_name FROM platforms p JOIN entities e ON p.entity_id = e.id WHERE p.id = ?').get(result.lastInsertRowid);
+  const body = await req.json();
+  db.prepare('INSERT INTO platforms (id, name_en, name_ar, org_id, url, status, consolidation_deadline, platform_type, tech_stack) VALUES (?,?,?,?,?,?,?,?,?)').run(
+    body.id, body.name_en, body.name_ar || null, body.org_id || null,
+    body.url || null, body.status || 'Active', body.consolidation_deadline || null,
+    body.platform_type || null, body.tech_stack || null
+  );
+  const row = db.prepare('SELECT * FROM platforms WHERE id = ?').get(body.id);
   return NextResponse.json(row, { status: 201 });
 }

@@ -1,50 +1,94 @@
 import { getDb } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
   const db = getDb();
   const { id } = params;
 
-  const meeting: any = db.prepare(`SELECT m.*, e.name AS entity_name, e.acronym AS entity_acronym, e.tier AS entity_tier, e.notes AS entity_notes,
-    s.name AS sector_name, c.name AS contact_name, c.role AS contact_role, c.email AS contact_email,
-    c.personality_notes AS contact_personality_notes
-    FROM meetings m JOIN entities e ON m.entity_id = e.id JOIN sectors s ON e.sector_id = s.id
-    JOIN contacts c ON m.contact_id = c.id WHERE m.id = ?`).get(id);
+  const meeting = db.prepare(`
+    SELECT m.*, sl.name_en as sector_lead_name, sl.personality_notes,
+      o.name_en as org_name, o.name_ar as org_name_ar, o.org_type, o.status as org_status,
+      s.name_en as sector_name, s.name_ar as sector_name_ar
+    FROM meetings m
+    LEFT JOIN sector_leads sl ON m.sector_lead_id = sl.id
+    LEFT JOIN organizations o ON m.org_id = o.id
+    LEFT JOIN sectors s ON o.sector_id = s.id
+    WHERE m.id = ?
+  `).get(id) as any;
 
   if (!meeting) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
-  const now = new Date();
-  const fourMonths = new Date(now);
-  fourMonths.setMonth(fourMonths.getMonth() + 4);
+  const lead = meeting.sector_lead_id
+    ? db.prepare('SELECT * FROM sector_leads WHERE id = ?').get(meeting.sector_lead_id)
+    : null;
 
-  const platforms = db.prepare(`SELECT * FROM platforms WHERE entity_id = ? AND deadline >= ? AND deadline <= ? ORDER BY deadline ASC`)
-    .all(meeting.entity_id, now.toISOString().split('T')[0], fourMonths.toISOString().split('T')[0]);
+  const org = meeting.org_id
+    ? db.prepare('SELECT * FROM organizations WHERE id = ?').get(meeting.org_id)
+    : null;
 
-  const lastMeeting = db.prepare(`SELECT * FROM meetings WHERE entity_id = ? AND status = 'completed' AND id != ? ORDER BY date DESC LIMIT 1`)
-    .get(meeting.entity_id, id);
+  const sector = meeting.org_id
+    ? db.prepare('SELECT s.* FROM sectors s JOIN organizations o ON o.sector_id = s.id WHERE o.id = ?').get(meeting.org_id)
+    : null;
 
-  const entityContacts = db.prepare('SELECT name, role, personality_notes FROM contacts WHERE entity_id = ?').all(meeting.entity_id);
+  // Platforms belonging to this org with deadlines in the next 4 months
+  const fourMonthsFromNow = new Date();
+  fourMonthsFromNow.setMonth(fourMonthsFromNow.getMonth() + 4);
+  const cutoff = fourMonthsFromNow.toISOString().split('T')[0];
+  const today = new Date().toISOString().split('T')[0];
 
+  const platforms = meeting.org_id
+    ? db.prepare(`
+        SELECT * FROM platforms
+        WHERE org_id = ? AND expected_completion IS NOT NULL
+          AND expected_completion >= ? AND expected_completion <= ?
+        ORDER BY expected_completion ASC
+      `).all(meeting.org_id, today, cutoff)
+    : [];
+
+  // Last completed meeting for this org
+  const lastMeeting = meeting.org_id
+    ? db.prepare(`
+        SELECT * FROM meetings
+        WHERE org_id = ? AND status = 'completed' AND id != ?
+        ORDER BY date DESC LIMIT 1
+      `).get(meeting.org_id, id)
+    : null;
+
+  // Auto-generate talking points
   const talkingPoints: string[] = [];
-  for (const p of platforms as any[]) {
-    talkingPoints.push(`Discuss ${p.action} timeline for ${p.name} (deadline: ${p.deadline})`);
+  const platformList = platforms as any[];
+
+  if (platformList.length > 0) {
+    for (const p of platformList) {
+      talkingPoints.push('Upcoming deadline: ' + (p as any).target_platform_name + ' consolidation by ' + (p as any).expected_completion);
+    }
   }
-  if ((lastMeeting as any)?.summary) {
-    talkingPoints.push(`Follow up on previous meeting: ${(lastMeeting as any).summary}`);
+
+  if (meeting.personality_notes) {
+    talkingPoints.push('Note: ' + meeting.personality_notes);
   }
-  const pn = meeting.contact_personality_notes?.toLowerCase() || '';
-  if (pn.includes('data-driven')) talkingPoints.push('Prepare data and metrics to support discussion points');
-  if (pn.includes('budget') || pn.includes('cost')) talkingPoints.push('Lead with cost savings and budget impact analysis');
-  if (pn.includes('demo')) talkingPoints.push('Prepare a live demo rather than slide deck');
-  if (pn.includes('equity') || pn.includes('student')) talkingPoints.push('Frame proposals around equity and student outcomes');
-  talkingPoints.push('Confirm next steps and assign action items before closing');
+
+  if (lastMeeting) {
+    const lm = lastMeeting as any;
+    if (lm.next_steps) {
+      talkingPoints.push('Follow up from last meeting: ' + lm.next_steps);
+    }
+    if (lm.outcomes) {
+      talkingPoints.push('Previous outcomes: ' + lm.outcomes);
+    }
+  }
+
+  if (talkingPoints.length === 0) {
+    talkingPoints.push('General consolidation progress review');
+  }
 
   return NextResponse.json({
-    entity: { name: meeting.entity_name, acronym: meeting.entity_acronym, tier: meeting.entity_tier, sector: meeting.sector_name, notes: meeting.entity_notes },
-    contact: { name: meeting.contact_name, role: meeting.contact_role, email: meeting.contact_email, personality: meeting.contact_personality_notes },
+    meeting,
+    lead,
+    org,
+    sector,
     platforms,
-    lastMeeting: lastMeeting ? { date: (lastMeeting as any).date, summary: (lastMeeting as any).summary, notes: (lastMeeting as any).notes } : null,
-    allContacts: entityContacts,
+    lastMeeting,
     talkingPoints,
   });
 }
